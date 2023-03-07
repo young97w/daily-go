@@ -7,13 +7,13 @@ import (
 )
 
 type Server interface {
-	Route(method, pattern string, handleFunc func(ctx *Context))
+	Routable
 	Start(address string) error
 }
 
 type sdkHttpServer struct {
 	Name    string
-	Handler *HandlerBasedOnMap
+	Handler Handler
 }
 
 func (s *sdkHttpServer) Route(method, pattern string, handleFunc func(ctx *Context)) {
@@ -21,8 +21,7 @@ func (s *sdkHttpServer) Route(method, pattern string, handleFunc func(ctx *Conte
 	//	ctx := NewContext(w, r)
 	//	handleFunc(ctx)
 	//})
-	key := s.Handler.Key(method, pattern)
-	s.Handler.handlers[key] = handleFunc
+	s.Handler.Route(method, pattern, handleFunc)
 }
 
 func (s sdkHttpServer) Start(address string) error {
@@ -30,8 +29,11 @@ func (s sdkHttpServer) Start(address string) error {
 	return http.ListenAndServe(address, nil)
 }
 
-func NewServer() Server {
-	return &sdkHttpServer{}
+func NewServer(Name string) Server {
+	return &sdkHttpServer{
+		Name:    Name,
+		Handler: NewHandlerBasedOnMap(),
+	}
 }
 
 type Context struct {

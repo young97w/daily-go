@@ -8,10 +8,10 @@ import (
 
 func main() {
 	//home
-	server := server_context.NewServer()
+	server := server_context.NewServer("myServer")
 	//server.Route("/", homeHandler)
 	//server.Route("/user", userHandler)
-	//server.Route("POST", "/signup", server_context.SignUp)
+	server.Route(http.MethodPost, "/signup", server_context.SignUp)
 	err := server.Start(":8080")
 	if err != nil {
 		panic(err)

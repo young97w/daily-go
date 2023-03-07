@@ -5,14 +5,30 @@ import (
 	"net/http"
 )
 
+type Routable interface {
+	Route(method, pattern string, handleFunc func(ctx *Context))
+}
+
 type Handler interface {
 	http.Handler
-	Route(method, pattern string, handleFunc func(ctx *Context))
+	Routable
 }
 
 type HandlerBasedOnMap struct {
 	//key: method + url
 	handlers map[string]func(ctx *Context)
+}
+
+//检测是否实现
+var _ Handler = &HandlerBasedOnMap{}
+
+func (h *HandlerBasedOnMap) Route(method, pattern string, handleFunc func(ctx *Context)) {
+	//http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+	//	ctx := NewContext(w, r)
+	//	handleFunc(ctx)
+	//})
+	key := h.Key(method, pattern)
+	h.handlers[key] = handleFunc
 }
 
 func (h *HandlerBasedOnMap) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -28,4 +44,8 @@ func (h *HandlerBasedOnMap) ServeHTTP(writer http.ResponseWriter, request *http.
 
 func (h *HandlerBasedOnMap) Key(method, path string) string {
 	return fmt.Sprintf("%s#%s", method, path)
+}
+
+func NewHandlerBasedOnMap() Handler {
+	return &HandlerBasedOnMap{handlers: map[string]func(ctx *Context){}}
 }
