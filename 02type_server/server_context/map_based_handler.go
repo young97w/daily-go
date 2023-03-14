@@ -23,10 +23,6 @@ type HandlerBasedOnMap struct {
 var _ Handler = &HandlerBasedOnMap{}
 
 func (h *HandlerBasedOnMap) Route(method, pattern string, handleFunc func(ctx *Context)) {
-	//http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-	//	ctx := NewContext(w, r)
-	//	handleFunc(ctx)
-	//})
 	key := h.Key(method, pattern)
 	h.handlers[key] = handleFunc
 }

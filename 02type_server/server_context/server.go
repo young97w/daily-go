@@ -17,10 +17,6 @@ type sdkHttpServer struct {
 }
 
 func (s *sdkHttpServer) Route(method, pattern string, handleFunc func(ctx *Context)) {
-	//http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-	//	ctx := NewContext(w, r)
-	//	handleFunc(ctx)
-	//})
 	s.Handler.Route(method, pattern, handleFunc)
 }
 
