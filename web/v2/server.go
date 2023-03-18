@@ -8,7 +8,7 @@ import "net/http"
 //web到http（寻找handler）
 type Server interface {
 	http.Handler
-	AddRoute(method, path string, handleFunc HandleFunc)
+	addRoute(method, path string, handleFunc HandleFunc)
 	Start(addr string) error
 }
 
@@ -24,7 +24,7 @@ var _ Server = &HTTPServer{}
 
 func NewHTTPServer() *HTTPServer {
 	return &HTTPServer{
-		newRoute(),
+		newRouter(),
 	}
 }
 
@@ -40,4 +40,16 @@ func (s *HTTPServer) Start(addr string) error {
 func (s *HTTPServer) Serve(ctx *Context) error {
 	//TODO
 	return nil
+}
+
+func (s *HTTPServer) GET(path string, handler HandleFunc) {
+	s.addRoute(http.MethodGet, path, handler)
+}
+
+func (s *HTTPServer) POST(path string, handler HandleFunc) {
+	s.addRoute(http.MethodPost, path, handler)
+}
+
+func (s *HTTPServer) PUT(path string, handler HandleFunc) {
+	s.addRoute(http.MethodPut, path, handler)
 }
