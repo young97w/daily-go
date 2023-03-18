@@ -29,17 +29,30 @@ func NewHTTPServer() *HTTPServer {
 }
 
 func (s *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	//TODO implement me
-	panic("implement me")
+	//新建context
+	//转交给serve
+	ctx := &Context{
+		Req:  *request,
+		Resp: writer,
+	}
+	s.Serve(ctx)
 }
 
 func (s *HTTPServer) Start(addr string) error {
 	return http.ListenAndServe(addr, s)
 }
 
-func (s *HTTPServer) Serve(ctx *Context) error {
-	//TODO
-	return nil
+func (s *HTTPServer) Serve(ctx *Context) {
+	//先find node
+	n, ok := s.findRoute(ctx.Req.Method, ctx.Req.URL.Path)
+	if !ok || n.handler == nil {
+		ctx.Resp.WriteHeader(http.StatusNotFound)
+		ctx.Resp.Write([]byte("NOT FOUND"))
+		return
+	}
+
+	n.handler(ctx)
+
 }
 
 func (s *HTTPServer) GET(path string, handler HandleFunc) {

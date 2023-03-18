@@ -3,12 +3,11 @@ package main
 import (
 	"fmt"
 	v2 "geektime/web/v2"
-	"net/http"
 )
 
 func main() {
 	s := v2.NewHTTPServer()
-	s.addRoute(http.MethodGet, "/user", hello)
+	s.GET("/user", hello)
 	s.Start("localhost:8082")
 }
 
