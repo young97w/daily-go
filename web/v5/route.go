@@ -106,7 +106,7 @@ func (r *router) findRoute(method string, path string) (*matchInfo, bool) {
 			}
 		}
 		if param != "" {
-			mi.addValue(root.paramName, param)
+			mi.addValue(child.paramName, param)
 		}
 		root = child
 		mi.n = root
