@@ -1,6 +1,9 @@
 package web
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+)
 
 type HandleFunc func(ctx *Context)
 
@@ -74,7 +77,25 @@ func (s *HTTPServer) serve(ctx *Context) {
 	for i := len(s.mdls) - 1; i >= 0; i-- {
 		root = s.mdls[i](root)
 	}
+	root = flashResp(root)
 	root(ctx)
+}
+
+//响应
+func flashResp(next HandleFunc) HandleFunc {
+	return func(ctx *Context) {
+		//执行中间件
+		next(ctx)
+		//写状态码
+		if ctx.RespStatusCode > 0 {
+			ctx.Resp.WriteHeader(ctx.RespStatusCode)
+		}
+		//写响应数据
+		_, err := ctx.Resp.Write(ctx.RespData)
+		if err != nil {
+			log.Fatalln("响应失败", err)
+		}
+	}
 }
 
 //Use 注册中间件

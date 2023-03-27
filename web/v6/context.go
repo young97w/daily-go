@@ -86,8 +86,10 @@ func (c *Context) RespJSON(code int, val any) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.Resp.Write(data)
-	return err
+	//_, err = c.Resp.Write(data)
+	c.RespStatusCode = code
+	c.RespData = data
+	return nil
 }
 
 //StringValue 方便链式调用
