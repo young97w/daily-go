@@ -81,7 +81,6 @@ func (c *Context) RespJSONOK(val any) error {
 
 //RespJSON 响应json消息
 func (c *Context) RespJSON(code int, val any) error {
-	c.Resp.WriteHeader(code)
 	data, err := json.Marshal(val)
 	if err != nil {
 		return err

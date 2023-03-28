@@ -39,7 +39,10 @@ func TestServerWithMiddleware(t *testing.T) {
 
 	s.Get(`/:id(\d+)/:repo`, repo)
 
-	s.Start(":8081")
+	err := s.Start(":8081")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func repo(ctx *Context) {

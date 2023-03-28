@@ -70,6 +70,7 @@ func (s *HTTPServer) serve(ctx *Context) {
 		ctx.Resp.Write([]byte("Not Found"))
 		return
 	}
+	ctx.MatchedRoute = mi.n.path
 	ctx.PathParams = mi.pathParams
 	root := mi.n.handler
 
@@ -91,6 +92,7 @@ func flashResp(next HandleFunc) HandleFunc {
 			ctx.Resp.WriteHeader(ctx.RespStatusCode)
 		}
 		//写响应数据
+		//fmt.Println(string(ctx.RespData))
 		_, err := ctx.Resp.Write(ctx.RespData)
 		if err != nil {
 			log.Fatalln("响应失败", err)

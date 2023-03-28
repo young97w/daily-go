@@ -24,7 +24,10 @@ func TestTracing(t *testing.T) {
 	s.Get("/trace", traceFunc)
 
 	s.Use(tb.Build())
-	s.Start(":8081")
+	err := s.Start(":8081")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func traceFunc(ctx *web.Context) {
@@ -46,11 +49,10 @@ func traceFunc(ctx *web.Context) {
 
 	//子节点二计时结束
 	second.End()
-	ctx.RespJSON(http.StatusOK, struct {
-		name string
-		id   int
-	}{
-		name: "hello",
-		id:   65535,
-	})
+	res := resData{Msg: "trace ok!"}
+	ctx.RespJSON(http.StatusOK, res)
+}
+
+type resData struct {
+	Msg string
 }

@@ -48,6 +48,16 @@ services:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - 3000:3000
+#    volumes:
+#      - ./grafana:/var/lib/grafana
+    restart: always
+
   etcd:
     image: 'bitnami/etcd:latest'
     environment:
