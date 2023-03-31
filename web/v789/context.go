@@ -60,7 +60,7 @@ func (c *Context) FormValue(key string) StringValue {
 }
 
 //QueryValue 返回query值
-//读数据,应先把query缓存起来，应对多次读取
+//读数据,先把query缓存起来，应对多次读取
 func (c *Context) QueryValue(key string) StringValue {
 	if c.cacheQueryValues == nil {
 		c.cacheQueryValues = c.Req.URL.Query()

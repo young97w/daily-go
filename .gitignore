@@ -111,3 +111,7 @@ fabric.properties
 !.gitignore
 !.gitsubmodules
 
+/grafana/alerting/1/__default__.tmpl
+/web/v789/a/
+/web/v789/web_file/
+/web/v789/web_file/docs/

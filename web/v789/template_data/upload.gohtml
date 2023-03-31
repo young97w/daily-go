@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>文件上传</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #F4F4F4;
+        }
+
+        .container {
+            margin: auto;
+            width: 50%;
+            padding: 20px;
+            background-color: #FFFFFF;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        .form-control {
+            width: 100%;
+            height: 30px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 6px 12px;
+            margin-bottom: 0;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.42857143;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            -ms-touch-action: manipulation;
+            touch-action: manipulation;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: #fff;
+            background-color: #337ab7;
+            border-color: #2e6da4;
+        }
+
+        .btn:hover,
+        .btn:focus {
+            color: #fff;
+            background-color: #286090;
+            border-color: #204d74;
+        }
+
+        .btn:active,
+        .btn.active {
+            background-image: none;
+            outline: 0;
+            -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+            box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>文件上传</h2>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="file">选择文件：</label>
+            <input type="file" name="file" id="file" class="form-control">
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn">上传</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>
