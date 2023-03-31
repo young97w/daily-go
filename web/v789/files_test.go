@@ -30,7 +30,7 @@ func TestFileUploader_Handle(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	})
+	}) //
 
 	s.Post("/upload", f.Handle())
 
