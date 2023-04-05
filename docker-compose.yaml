@@ -12,7 +12,7 @@ services:
     ports:
       - '6379:6379'
 #    volumes:
-#      - 'redis_data:/bitnami/redis/data'
+#      - 'redis_data:/bitnami/withRedis/data'
 
   # MySQL8
   mysql8:

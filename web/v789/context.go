@@ -28,6 +28,9 @@ type Context struct {
 
 	//页面渲染引擎
 	tplEngine TemplateEngine
+
+	//UserValues 主要是缓存用户的session
+	UserValues map[string]any
 }
 
 func (c *Context) Render(tpl string, data any) error {
