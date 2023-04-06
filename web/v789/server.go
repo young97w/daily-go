@@ -16,7 +16,7 @@ type Server interface {
 
 	// addRoute 注册一个路由
 	// method 是 HTTP 方法
-	addRoute(method string, path string, handler HandleFunc)
+	addRoute(method string, path string, handler HandleFunc, mdls ...Middleware)
 	// 我们并不采取这种设计方案
 	// addRoute(method string, path string, handlers... HandleFunc)
 }
@@ -57,12 +57,12 @@ func (s *HTTPServer) Start(addr string) error {
 	return http.ListenAndServe(addr, s)
 }
 
-func (s *HTTPServer) Post(path string, handler HandleFunc) {
-	s.addRoute(http.MethodPost, path, handler)
+func (s *HTTPServer) Post(path string, handler HandleFunc, mdls ...Middleware) {
+	s.addRoute(http.MethodPost, path, handler, mdls...)
 }
 
-func (s *HTTPServer) Get(path string, handler HandleFunc) {
-	s.addRoute(http.MethodGet, path, handler)
+func (s *HTTPServer) Get(path string, handler HandleFunc, mdls ...Middleware) {
+	s.addRoute(http.MethodGet, path, handler, mdls...)
 }
 
 func (s *HTTPServer) serve(ctx *Context) {

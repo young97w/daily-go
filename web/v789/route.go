@@ -25,7 +25,7 @@ func newRouter() router {
 // - 不能在同一个位置注册不同的参数路由，例如 /user/:id 和 /user/:name 冲突
 // - 不能在同一个位置同时注册通配符路由和参数路由，例如 /user/:id 和 /user/* 冲突
 // - 同名路径参数，在路由匹配的时候，值会被覆盖。例如 /user/:id/abc/:id，那么 /user/123/abc/456 最终 id = 456
-func (r *router) addRoute(method string, path string, handler HandleFunc) {
+func (r *router) addRoute(method string, path string, handler HandleFunc, mdls ...Middleware) {
 	//先校验path
 	if len(path) == 0 {
 		panic("web: 路由是空字符串")
@@ -46,6 +46,7 @@ func (r *router) addRoute(method string, path string, handler HandleFunc) {
 			r.trees[method] = &node{
 				path:    "/",
 				handler: handler,
+				mdls:    mdls,
 			}
 			return
 		}
@@ -77,6 +78,7 @@ func (r *router) addRoute(method string, path string, handler HandleFunc) {
 			panic(fmt.Sprintf("web: 路由冲突[%s]", path))
 		}
 	}
+	root.mdls = mdls
 	root.handler = handler
 }
 
@@ -87,9 +89,10 @@ func (r *router) findRoute(method string, path string) (*matchInfo, bool) {
 	if !ok {
 		return nil, false
 	}
-
+	realRoot := root
 	mi := &matchInfo{n: root}
 	if path == "/" {
+		mi.mdls = root.mdls
 		return mi, mi.n != nil
 	}
 
@@ -100,6 +103,7 @@ func (r *router) findRoute(method string, path string) (*matchInfo, bool) {
 		child, param, ok = root.childOf(seg)
 		if !ok {
 			if root.typ == nodeTypeAny {
+				mi.mdls = r.findMdls(realRoot, segs)
 				return mi, root.handler != nil
 			} else {
 				return nil, false
@@ -113,7 +117,64 @@ func (r *router) findRoute(method string, path string) (*matchInfo, bool) {
 	}
 
 	mi.n = root
+	mi.mdls = r.findMdls(realRoot, segs)
 	return mi, mi.n.handler != nil
+}
+
+func (r *router) findMdls(root *node, segs []string) []Middleware {
+	var mdls []Middleware
+	if root.mdls != nil {
+		mdls = append(mdls, root.mdls...)
+	}
+	//通配符 正则 路径参数 ， 三个中有最多有一个存在
+	layer := root.getChildrenNode()
+	//开始层匹配
+	for _, seg := range segs {
+		index := len(layer)
+		for _, node := range layer {
+			switch node.typ {
+			//通配符匹配 直接加入
+			case nodeTypeAny:
+				mdls = append(mdls, node.mdls...)
+				layer = append(layer, node.getChildrenNode()...)
+			//判断正则是否匹配
+			case nodeTypeReg:
+				mv := node.regChild.regExpr.FindString(seg)
+				if mv != "" {
+					mdls = append(mdls, node.mdls...)
+					layer = append(layer, node.getChildrenNode()...)
+				}
+			case nodeTypeParam:
+				mdls = append(mdls, node.mdls...)
+				layer = append(layer, node.getChildrenNode()...)
+			case nodeTypeStatic:
+				if node.path == seg {
+					mdls = append(mdls, node.mdls...)
+					layer = append(layer, node.getChildrenNode()...)
+				}
+			}
+		}
+
+		layer = layer[index:]
+	}
+	return mdls
+}
+
+func (n *node) getChildrenNode() []*node {
+	var res []*node
+	switch {
+	case n.starChild != nil:
+		res = append(res, n.starChild)
+	case n.regChild != nil:
+		res = append(res, n.regChild)
+	case n.paramChild != nil:
+		res = append(res, n.paramChild)
+	}
+	for _, child := range n.children {
+		res = append(res, child)
+	}
+
+	return res
 }
 
 type nodeType int
@@ -156,6 +217,9 @@ type node struct {
 	// 正则表达式
 	regChild *node
 	regExpr  *regexp.Regexp
+
+	//中间件 Middleware
+	mdls []Middleware
 }
 
 // child 返回子节点
@@ -275,6 +339,7 @@ func (n *node) childOrCreate(path string) *node {
 type matchInfo struct {
 	n          *node
 	pathParams map[string]string
+	mdls       []Middleware
 }
 
 func (m *matchInfo) addValue(key string, value string) {
