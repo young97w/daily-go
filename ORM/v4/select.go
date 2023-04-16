@@ -17,8 +17,12 @@ type Selector[T any] struct {
 	db *DB
 }
 
-func NewSelector[T any]() *Selector[T] {
-	return &Selector[T]{args: make([]any, 0, 4), model: &model{}}
+func NewSelector[T any](db *DB) *Selector[T] {
+	return &Selector[T]{
+		args:  make([]any, 0, 4),
+		model: &model{},
+		db:    db,
+	}
 }
 
 //From 指定表名

@@ -51,7 +51,7 @@ func Test_parseModel(t *testing.T) {
 		},
 	}
 
-	db := NewRegistry()
+	db := NewDB()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			res, err := db.r.parseModel(tc.entity)
