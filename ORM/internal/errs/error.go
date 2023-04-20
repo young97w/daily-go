@@ -18,6 +18,7 @@ var (
 	ErrNoUpdatedColumns = errors.New("orm: 未指定更新的列")
 	//非结构体类型
 	ErrInvalidType = errors.New("orm: 非法类型")
+	ErrNoRowsFound = errors.New("orm: 未找到列")
 )
 
 // NewErrUnknownField 返回代表未知字段的错误

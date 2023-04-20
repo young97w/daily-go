@@ -26,6 +26,7 @@ func TestSqlMock(t *testing.T) {
 	//开始测试
 	//第一个expectedQuery
 	rows, err := db.QueryContext(context.Background(), "SELECT `id`,`first_name` FROM `user` WHERE `id`=", 1)
+	rows.Columns()
 	require.NoError(t, err)
 	for rows.Next() {
 		tm := TestModel{}
