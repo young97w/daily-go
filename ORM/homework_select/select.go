@@ -3,15 +3,10 @@ package v1
 import (
 	"context"
 	"fmt"
+	"geektime/ORM/homework_select/internal/model"
 	"geektime/ORM/internal/errs"
-	"geektime/ORM/v7/internal/model"
 	"reflect"
 	"strings"
-)
-
-const (
-	OrderDESC = "DESC"
-	OrderAsc  = "ASC"
 )
 
 //Selector 构造select 语句
@@ -23,7 +18,9 @@ type Selector[T any] struct {
 	where   []Predicate
 	groupBy []Selectable
 	having  []Predicate
-	order   []Predicate
+	orderBy []Predicate
+	offset  int
+	limit   int
 	model   *model.Model
 
 	db *DB
@@ -64,20 +61,25 @@ func (s *Selector[T]) GroupBy(cols ...Selectable) *Selector[T] {
 }
 
 func (s *Selector[T]) Having(ps ...Predicate) *Selector[T] {
-	panic("")
+	s.having = ps
+	return s
 }
 
-func (s *Selector[T]) OrderBy(cols ...Selectable) *Selector[T] {
-	panic("")
+func (s *Selector[T]) OrderBy(ps ...Predicate) *Selector[T] {
+	s.orderBy = ps
+	return s
 }
 
-func (s *Selector[T]) Offset(offset, limit int) *Selector[T] {
-	panic("")
+func (s *Selector[T]) Limit(limit, offset int) *Selector[T] {
+	s.offset = offset
+	s.limit = limit
+	return s
 }
 
 func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
 	//接收db 使用db获取数据 处理结果集
 	//先build
+	s.limit = 1
 	q, err := s.Build()
 	if err != nil {
 		return nil, err
@@ -146,8 +148,39 @@ func (s *Selector[T]) Build() (*Query, error) {
 		}
 	}
 
+	// 构建 GROUP BY
 	if len(s.groupBy) > 0 {
+		err = s.buildGroupBy()
+		if err != nil {
+			return nil, err
+		}
+	}
 
+	//构建 HAVING
+	if len(s.having) > 0 {
+		err = s.buildHaving()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	//构建 ORDER BY
+	if len(s.orderBy) > 0 {
+		err = s.buildOrderBy()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	//limit offset
+	if s.limit > 0 {
+		s.sb.WriteString(" LIMIT ?")
+		s.addArgs(s.limit)
+	}
+
+	if s.offset > 0 && s.limit > 0 {
+		s.sb.WriteString(" OFFSET ?")
+		s.addArgs(s.offset)
 	}
 
 	//结尾
@@ -164,7 +197,61 @@ func (s *Selector[T]) buildColumns() error {
 		return nil
 	}
 
-	for i, column := range s.columns {
+	return s.buildGenericCols(s.columns)
+}
+
+func (s *Selector[T]) buildGroupBy() error {
+	if len(s.groupBy) == 0 {
+		return nil
+	}
+
+	s.sb.WriteByte(' ')
+	s.sb.WriteString("GROUP BY")
+	s.sb.WriteByte(' ')
+	return s.buildGenericCols(s.groupBy)
+}
+
+func (s *Selector[T]) buildHaving() error {
+	if len(s.having) == 0 {
+		return nil
+	}
+
+	s.sb.WriteByte(' ')
+	s.sb.WriteString("HAVING")
+	s.sb.WriteByte(' ')
+	e := s.having[0]
+
+	for i := 1; i < len(s.having); i++ {
+		e = e.And(s.having[i])
+	}
+	return s.buildExpression(e)
+}
+
+func (s *Selector[T]) buildOrderBy() error {
+	if len(s.orderBy) == 0 {
+		return nil
+	}
+
+	s.sb.WriteByte(' ')
+	s.sb.WriteString("ORDER BY")
+	s.sb.WriteByte(' ')
+
+	for i, o := range s.orderBy {
+		if i > 0 {
+			s.sb.WriteByte(',')
+		}
+		err := s.buildColumn(o.left.(Column))
+		if err != nil {
+			return err
+		}
+		s.sb.WriteByte(' ')
+		s.sb.WriteString(o.op.String())
+	}
+	return nil
+}
+
+func (s *Selector[T]) buildGenericCols(cols []Selectable) error {
+	for i, column := range cols {
 		if i > 0 {
 			s.sb.WriteByte(',')
 		}
@@ -200,7 +287,6 @@ func (s *Selector[T]) buildColumns() error {
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -259,6 +345,14 @@ func (s *Selector[T]) buildExpression(e Expression) error {
 		s.sb.WriteByte('(')
 		s.sb.WriteString(exp.raw)
 		s.addArgs(exp.args...)
+		s.sb.WriteByte(')')
+	case Aggregate:
+		s.sb.WriteString(exp.fn)
+		s.sb.WriteByte('(')
+		err := s.buildColumn(Column{name: exp.col})
+		if err != nil {
+			return err
+		}
 		s.sb.WriteByte(')')
 	default:
 		return fmt.Errorf("orm: 不支持的表达式 %v", exp)

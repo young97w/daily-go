@@ -2,16 +2,236 @@ package v1
 
 import (
 	"context"
-	"fmt"
+	"geektime/ORM/homework_select/internal/model"
+	"geektime/ORM/homework_select/internal/valuer"
 	"geektime/ORM/internal/errs"
-	"geektime/ORM/v7/internal/model"
-	"geektime/ORM/v7/internal/valuer"
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
+
+func TestLimit(t *testing.T) {
+	//构建db
+	sqlDB, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	db, _ := OpenDB(sqlDB)
+	testCases := []struct {
+		name    string
+		builder *Selector[TestModel]
+		limit   int
+		offset  int
+
+		wantQuery *Query
+		wantErr   error
+	}{
+		{
+			name:    "no limit and offset",
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model`;",
+				Args: []any{},
+			},
+		},
+		{
+			name:    "limit ,but no offset",
+			builder: NewSelector[TestModel](db),
+			limit:   5,
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model` LIMIT ?;",
+				Args: []any{5},
+			},
+		},
+		{
+			name:    "limit and offset",
+			builder: NewSelector[TestModel](db),
+			limit:   5,
+			offset:  15,
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model` LIMIT ? OFFSET ?;",
+				Args: []any{5, 15},
+			},
+		},
+		{
+			name:    "only offset, no effect",
+			builder: NewSelector[TestModel](db),
+			offset:  5,
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model`;",
+				Args: []any{},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			q, err := tc.builder.Limit(tc.limit, tc.offset).Build()
+			assert.Equal(t, tc.wantErr, err)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tc.wantQuery, q)
+		})
+	}
+
+}
+
+func TestSelector_OrderBy(t *testing.T) {
+	//构建db
+	sqlDB, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	db, _ := OpenDB(sqlDB)
+
+	testCases := []struct {
+		name      string
+		orderBy   []Predicate
+		builder   *Selector[TestModel]
+		wantErr   error
+		wantQuery *Query
+	}{
+		{
+			name:    "order by age desc",
+			orderBy: []Predicate{C("Age").Desc()},
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model` ORDER BY `age` DESC;",
+				Args: []any{},
+			},
+		},
+
+		//两个column排序
+		{
+			name:    "order by age desc",
+			orderBy: []Predicate{C("Age").Desc(), C("FirstName").Asc()},
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model` ORDER BY `age` DESC,`first_name` ASC;",
+				Args: []any{},
+			},
+		},
+
+		{
+			name:    "no order by",
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model`;",
+				Args: []any{},
+			},
+		},
+		{
+			name:    "invalid column",
+			builder: NewSelector[TestModel](db),
+			orderBy: []Predicate{C("age").Asc()},
+			wantErr: errs.NewErrUnknownField("age"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			q, err := tc.builder.OrderBy(tc.orderBy...).Build()
+			assert.Equal(t, tc.wantErr, err)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tc.wantQuery, q)
+		})
+	}
+}
+
+func TestSelector_Having(t *testing.T) {
+	//构建db
+	sqlDB, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	db, _ := OpenDB(sqlDB)
+
+	testCases := []struct {
+		name      string
+		cols      []Selectable
+		having    []Predicate
+		builder   *Selector[TestModel]
+		wantErr   error
+		wantQuery *Query
+	}{
+		{
+			name:    "group by 1 col having condition",
+			cols:    []Selectable{C("FirstName")},
+			having:  []Predicate{C("Age").GT(18)},
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model` GROUP BY `first_name` HAVING `age` > ?;",
+				Args: []any{18},
+			},
+		},
+		{
+			name:    "invalid column",
+			cols:    []Selectable{C("First")},
+			builder: NewSelector[TestModel](db),
+			wantErr: errs.NewErrUnknownField("First"),
+		},
+		{
+			name:    "group by 2 col",
+			cols:    []Selectable{C("FirstName"), C("Age")},
+			having:  []Predicate{C("Age").GT(18)},
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model` GROUP BY `first_name`,`age` HAVING `age` > ?;",
+				Args: []any{18},
+			},
+		},
+
+		{
+			// 调用了，但是啥也没传
+			name:    "none",
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model`;",
+				Args: []any{},
+			},
+		},
+
+		//有聚合函数
+		{
+			name:    "group by 2 col，having aggregate",
+			cols:    []Selectable{C("FirstName"), C("Age")},
+			having:  []Predicate{Avg("Age").EQ(18)},
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model` GROUP BY `first_name`,`age` HAVING AVG(`age`) = ?;",
+				Args: []any{18},
+			},
+		},
+
+		//多个 predicate 条件
+		{
+			name:    "group by 2 col，having aggregate",
+			cols:    []Selectable{C("FirstName"), C("Age")},
+			having:  []Predicate{C("FirstName").EQ("Deng"), C("LastName").EQ("Ming")},
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model` GROUP BY `first_name`,`age` HAVING (`first_name` = ?) AND (`last_name` = ?);",
+				Args: []any{"Deng", "Ming"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			q, err := tc.builder.GroupBy(tc.cols...).Having(tc.having...).Build()
+			assert.Equal(t, tc.wantErr, err)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tc.wantQuery, q)
+		})
+	}
+}
 
 func TestSelector_GroupBy(t *testing.T) {
 	//构建db
@@ -33,7 +253,7 @@ func TestSelector_GroupBy(t *testing.T) {
 			cols:    []Selectable{C("FirstName")},
 			builder: NewSelector[TestModel](db),
 			wantQuery: &Query{
-				SQL:  "SELECT * FROM `test_model` GROUP BY `first_name`",
+				SQL:  "SELECT * FROM `test_model` GROUP BY `first_name`;",
 				Args: []any{},
 			},
 		},
@@ -48,13 +268,32 @@ func TestSelector_GroupBy(t *testing.T) {
 			cols:    []Selectable{C("FirstName"), C("Age")},
 			builder: NewSelector[TestModel](db),
 			wantQuery: &Query{
-				SQL:  "SELECT * FROM `test_model` GROUP BY `first_name`,`age`",
+				SQL:  "SELECT * FROM `test_model` GROUP BY `first_name`,`age`;",
+				Args: []any{},
+			},
+		},
+
+		{
+			// 调用了，但是啥也没传
+			name:    "none",
+			builder: NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM `test_model`;",
 				Args: []any{},
 			},
 		},
 	}
 
-	fmt.Println(testCases)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			q, err := tc.builder.GroupBy(tc.cols...).Build()
+			assert.Equal(t, tc.wantErr, err)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tc.wantQuery, q)
+		})
+	}
 }
 
 func TestSelector_Select(t *testing.T) {
@@ -371,49 +610,4 @@ func TestSelector_Get(t *testing.T) {
 			assert.Equal(t, tc.wantRes, res)
 		})
 	}
-}
-
-func BenchmarkSelector_Get(b *testing.B) {
-	db, err := Open("sqlite3", fmt.Sprintf("file:benchmark_get.db?cache=shared&mode=memory"))
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	_, err = db.db.Exec(TestModel{}.CreateSQL())
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	res, err := db.db.Exec("INSERT INTO `test_model`(`id`,`first_name`,`age`,`last_name`) VALUES (?,?,?,?) ", 1, "young", 18, "sky")
-	if err != nil {
-		b.Fatal(err)
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		b.Fatal(err)
-	}
-	if affected == 0 {
-		b.Fatal()
-	}
-
-	b.Run("unsafe", func(b *testing.B) {
-		db.valCreator = valuer.NewUnsafeValue
-		for i := 0; i < b.N; i++ {
-			_, err = NewSelector[TestModel](db).Get(context.Background())
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	b.Run("reflect", func(b *testing.B) {
-		db.valCreator = valuer.NewReflectValue
-		for i := 0; i < b.N; i++ {
-			_, err = NewSelector[TestModel](db).Get(context.Background())
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
 }
