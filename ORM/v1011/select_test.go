@@ -3,8 +3,8 @@ package v1
 import (
 	"context"
 	"geektime/ORM/internal/errs"
-	"geektime/ORM/v10/internal/model"
-	"geektime/ORM/v10/internal/valuer"
+	"geektime/ORM/v1011/internal/model"
+	"geektime/ORM/v1011/internal/valuer"
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"

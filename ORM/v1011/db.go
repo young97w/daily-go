@@ -2,8 +2,8 @@ package v1
 
 import (
 	"database/sql"
-	"geektime/ORM/v10/internal/model"
-	"geektime/ORM/v10/internal/valuer"
+	"geektime/ORM/v1011/internal/model"
+	"geektime/ORM/v1011/internal/valuer"
 )
 
 type DB struct {

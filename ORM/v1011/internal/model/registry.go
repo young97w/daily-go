@@ -63,9 +63,15 @@ func (r *Registry) ParseModel(entity any) (*Model, error) {
 			colName = underscoreName(f.Name)
 		}
 
-		fields[f.Name] = &Field{ColName: colName, Offset: f.Offset} //, Typ: f.Type}
-		columns[colName] = &Field{FieldName: f.Name, Typ: f.Type, Offset: f.Offset}
-		colSlice = append(colSlice, &Field{ColName: colName, FieldName: f.Name, Offset: f.Offset})
+		fd := &Field{
+			FieldName: f.Name,
+			ColName:   colName,
+			Typ:       f.Type,
+			Offset:    f.Offset,
+		}
+		fields[f.Name] = fd //, Typ: f.Type}
+		columns[colName] = fd
+		colSlice = append(colSlice, fd)
 	}
 
 	//get table name

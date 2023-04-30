@@ -48,6 +48,25 @@ func TestInserter_Build(t *testing.T) {
 					int64(1), "young", int8(18), &sql.NullString{String: "sky", Valid: true}},
 			},
 		},
+		//insert with columns
+		{
+			name: "with cols",
+			builder: NewInserter[TestModel](db).Columns("FirstName", "Age").Values(
+				&TestModel{
+					Id:        1,
+					FirstName: "young",
+					Age:       18,
+					LastName: &sql.NullString{
+						String: "sky",
+						Valid:  true,
+					},
+				},
+			),
+			wantQuery: &Query{
+				SQL:  "INSERT INTO `test_model`(`first_name`,`age`) VALUES (?,?);",
+				Args: []any{"young", int8(18)},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

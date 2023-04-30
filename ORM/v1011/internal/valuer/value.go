@@ -2,7 +2,7 @@ package valuer
 
 import (
 	"database/sql"
-	"geektime/ORM/v10/internal/model"
+	"geektime/ORM/v1011/internal/model"
 )
 
 //因为有 reflect 和 unsafe的实现
