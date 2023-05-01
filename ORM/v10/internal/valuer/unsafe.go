@@ -3,7 +3,7 @@ package valuer
 import (
 	"database/sql"
 	"geektime/ORM/internal/errs"
-	"geektime/ORM/v1011/internal/model"
+	"geektime/ORM/v10/internal/model"
 	"reflect"
 	"unsafe"
 )

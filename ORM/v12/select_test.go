@@ -3,8 +3,8 @@ package v1
 import (
 	"context"
 	"geektime/ORM/internal/errs"
-	"geektime/ORM/v1011/internal/model"
-	"geektime/ORM/v1011/internal/valuer"
+	"geektime/ORM/v12/internal/model"
+	"geektime/ORM/v12/internal/valuer"
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
@@ -124,7 +124,7 @@ func TestSelector_OrderBy(t *testing.T) {
 			},
 		},
 		{
-			name:    "invalid column",
+			name:    "invalid buildColumn",
 			builder: NewSelector[TestModel](db),
 			orderBy: []Predicate{C("age").Asc()},
 			wantErr: errs.NewErrUnknownField("age"),
@@ -170,7 +170,7 @@ func TestSelector_Having(t *testing.T) {
 			},
 		},
 		{
-			name:    "invalid column",
+			name:    "invalid buildColumn",
 			cols:    []Selectable{C("First")},
 			builder: NewSelector[TestModel](db),
 			wantErr: errs.NewErrUnknownField("First"),
@@ -258,7 +258,7 @@ func TestSelector_GroupBy(t *testing.T) {
 			},
 		},
 		{
-			name:    "invalid column",
+			name:    "invalid buildColumn",
 			cols:    []Selectable{C("First")},
 			builder: NewSelector[TestModel](db),
 			wantErr: errs.NewErrUnknownField("First"),
@@ -321,7 +321,7 @@ func TestSelector_Select(t *testing.T) {
 			},
 		},
 		{
-			name:    "invalid column",
+			name:    "invalid buildColumn",
 			cols:    []Selectable{C("invalid")},
 			builder: NewSelector[TestModel](db),
 			wantErr: errs.NewErrUnknownField("invalid"),
@@ -533,7 +533,7 @@ func TestModelWithColumnName(t *testing.T) {
 			},
 		},
 		{
-			name:    "empty column name with error",
+			name:    "empty buildColumn name with error",
 			field:   "Id",
 			colName: "",
 			wantErr: errs.NewErrUnknownField("Id"),

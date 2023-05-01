@@ -2,7 +2,7 @@ package valuer
 
 import (
 	"database/sql"
-	"geektime/ORM/v1011/internal/model"
+	"geektime/ORM/v12/internal/model"
 )
 
 //因为有 reflect 和 unsafe的实现
@@ -10,6 +10,7 @@ import (
 
 type Value interface {
 	SetColumns(rows *sql.Rows) error
+	Field(field string) (any, error)
 }
 
 type Creator func(val any, model *model.Model) Value

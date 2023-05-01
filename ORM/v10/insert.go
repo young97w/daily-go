@@ -2,7 +2,7 @@ package v1
 
 import (
 	"geektime/ORM/internal/errs"
-	"geektime/ORM/v1011/internal/model"
+	"geektime/ORM/v10/internal/model"
 	"reflect"
 	"strings"
 )

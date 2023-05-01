@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"geektime/ORM/internal/errs"
-	"geektime/ORM/v1011/internal/model"
+	"geektime/ORM/v10/internal/model"
 	"reflect"
 	"strings"
 )
