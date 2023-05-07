@@ -83,7 +83,8 @@ func (db *DB) queryContext(ctx context.Context, query string, args ...any) (*sql
 }
 
 func (db *DB) execContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return db.db.ExecContext(ctx, query, args...)
+	res, err := db.db.ExecContext(ctx, query, args...)
+	return res, err
 }
 
 func DBWithDialect(dialect Dialect) DBOption {

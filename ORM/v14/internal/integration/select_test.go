@@ -1,9 +1,12 @@
+//go:build e2e
+
 package integration
 
 import (
 	"context"
 	v1 "geektime/ORM/v14"
 	"geektime/ORM/v14/internal/test"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"testing"

@@ -2,6 +2,7 @@ package integration
 
 import (
 	v1 "geektime/ORM/v14"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

@@ -333,7 +333,9 @@ func (s *Selector[T]) buildExpression(e Expression) error {
 }
 
 func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
-	var handler = s.getHandler
+	var handler HandleFunc = func(ctx context.Context, qc *QueryContext) *QueryResult {
+		return getHandler[T](s.sess, s.core, ctx, qc)
+	}
 	for i := len(s.mdls) - 1; i >= 0; i-- {
 		handler = s.mdls[i](handler)
 	}
@@ -350,36 +352,6 @@ func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
 
 func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
 	panic("")
-}
-
-func (s *Selector[T]) getHandler(ctx context.Context, qc *QueryContext) *QueryResult {
-	//接收db 使用db获取数据 处理结果集
-	//先build
-	s.limit = 1
-	q, err := s.Build()
-	if err != nil {
-		return &QueryResult{Err: err}
-	}
-
-	rows, err := s.sess.queryContext(ctx, q.SQL, q.Args...)
-	if err != nil {
-		return &QueryResult{Err: err}
-	}
-
-	//处理结果集
-	for !rows.Next() {
-		return nil
-	}
-
-	t := new(T)
-	model, err := s.R.Get(t)
-	if err != nil {
-		return &QueryResult{Err: err}
-	}
-	//新建creator
-	creator := s.valCreator(t, model) //valuer.NewUnsafeValue(t, model)
-	err = creator.SetColumns(rows)
-	return &QueryResult{Result: t, Err: err}
 }
 
 func (s *Selector[T]) Get1(ctx context.Context) (*T, error) {

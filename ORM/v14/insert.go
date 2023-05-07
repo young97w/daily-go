@@ -138,18 +138,10 @@ func (i *Inserter[T]) Build() (*Query, error) {
 	}, nil
 }
 
-func (i *Inserter[T]) insertHandler(ctx context.Context, qc *QueryContext) *QueryResult {
-	q, err := i.Build()
-	if err != nil {
-		return &QueryResult{Err: err}
-	}
-
-	res, err := i.sess.execContext(ctx, q.SQL, q.Args...)
-	return &QueryResult{Result: res, Err: err}
-}
-
 func (i *Inserter[T]) Exec(ctx context.Context) *QueryResult {
-	var handler = i.insertHandler
+	var handler HandleFunc = func(ctx context.Context, qc *QueryContext) *QueryResult {
+		return execHandler[T](i.sess, ctx, qc)
+	}
 	for idx := len(i.mdls) - 1; idx >= 0; idx-- {
 		handler = i.mdls[idx](handler)
 	}
