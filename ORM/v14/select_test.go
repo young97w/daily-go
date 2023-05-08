@@ -12,6 +12,65 @@ import (
 	"testing"
 )
 
+type Order struct {
+	Id        int
+	UsingCol1 string
+	UsingCol2 string
+}
+
+type OrderDetail struct {
+	OrderId int
+	ItemId  int
+
+	UsingCol1 string
+	UsingCol2 string
+}
+
+type Item struct {
+	Id int
+}
+
+func TestJoin(t *testing.T) {
+
+	//构建db
+	sqlDB, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	db, _ := OpenDB(sqlDB)
+
+	testCases := []struct {
+		name      string
+		builder   QueryBuilder
+		wantQuery *Query
+		wantErr   error
+	}{
+		{
+			name: "inner join",
+			builder: func() *Selector[Order] {
+				t1 := TableOf(&Order{}).As("t1")
+				t2 := TableOf(&OrderDetail{}).As("t2")
+				tbR := t1.Join(t2).On(t1.C("Id").EQ(t2.C("OrderId")))
+				return NewSelector[Order](db).From(tbR)
+			}(),
+			wantQuery: &Query{
+				SQL: "SELECT * FROM (`item` AS `t4` JOIN (`order` AS `t1` JOIN `order_detail` AS `t2` ON `t1`.`id` = `t2`.`order_id`) ON `t2`.`item_id` = `t4`.`id`);",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			q, err := tc.builder.Build()
+			assert.Equal(t, tc.wantErr, err)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tc.wantQuery, q)
+		})
+	}
+}
+
 func TestLimit(t *testing.T) {
 	//构建db
 	sqlDB, _, err := sqlmock.New()
@@ -397,20 +456,20 @@ func TestSelector_Build(t *testing.T) {
 		},
 		{
 			name:      "with from",
-			builder:   NewSelector[TestModel](db).From("`test_table`"),
-			wantQuery: &Query{SQL: "SELECT * FROM `test_table`;", Args: make([]any, 0)},
+			builder:   NewSelector[TestModel](db),
+			wantQuery: &Query{SQL: "SELECT * FROM `test_model`;", Args: make([]any, 0)},
 		},
 		{
 			name:      "empty form",
-			builder:   NewSelector[TestModel](db).From(""),
+			builder:   NewSelector[TestModel](db),
 			wantQuery: &Query{SQL: "SELECT * FROM `test_model`;", Args: make([]any, 0, 4)},
 		},
 		{
 			// 单一简单条件
 			name:    "single and simple predicate",
-			builder: NewSelector[TestModel](db).From("`test_model_t`").Where(C("Id").EQ(1)),
+			builder: NewSelector[TestModel](db).Where(C("Id").EQ(1)),
 			wantQuery: &Query{
-				SQL:  "SELECT * FROM `test_model_t` WHERE `id` = ?;",
+				SQL:  "SELECT * FROM `test_model` WHERE `id` = ?;",
 				Args: []any{1},
 			},
 		},

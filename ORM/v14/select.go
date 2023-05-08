@@ -14,7 +14,7 @@ type Selector[T any] struct {
 	//args    []any
 	//model   *model.Model
 	builder
-	table   string
+	table   TableReference
 	columns []Selectable
 	where   []Predicate
 	groupBy []Selectable
@@ -46,7 +46,7 @@ type Selectable interface {
 }
 
 //From 指定表名
-func (s *Selector[T]) From(table string) *Selector[T] {
+func (s *Selector[T]) From(table TableReference) *Selector[T] {
 	s.table = table
 	return s
 }
@@ -98,13 +98,8 @@ func (s *Selector[T]) Build() (*Query, error) {
 
 	s.sb.WriteString(" FROM ")
 
-	if s.table == "" {
-		s.sb.WriteByte('`')
-		s.sb.WriteString(s.model.TableName)
-		s.sb.WriteByte('`')
-	} else {
-		s.sb.WriteString(s.table)
-	}
+	// build table 	`xx_table` or join
+	err = s.buildTable(s.table)
 
 	//构建where
 	//注意清空 as
@@ -161,6 +156,74 @@ func (s *Selector[T]) Build() (*Query, error) {
 		SQL:  s.sb.String(),
 		Args: s.args,
 	}, nil
+}
+
+func (s *Selector[T]) buildTable(table TableReference) error {
+	switch t := table.(type) {
+	case nil:
+		//不需要空格
+		s.quote(s.model.TableName)
+	case Table:
+		m, err := s.R.Get(t)
+		if err != nil {
+			return err
+		}
+
+		s.sb.WriteByte(' ')
+		s.quote(m.TableName)
+		s.sb.WriteByte(' ')
+		if t.alias != "" {
+			s.sb.WriteString(" AS ")
+			s.quote(t.alias)
+		}
+	case Join:
+		s.sb.WriteByte('(')
+
+		err := s.buildTable(t.left)
+		if err != nil {
+			return err
+		}
+		s.sb.WriteByte(' ')
+		s.sb.WriteString(t.typ)
+		s.sb.WriteByte(' ')
+		err = s.buildTable(t.right)
+		if err != nil {
+			return err
+		}
+
+		//构造条件 on（predicate 使用buildExpression 构造） 或者using（buildColumn）
+		if len(t.on) > 0 {
+			s.sb.WriteString(" ON ")
+			p := t.on[0]
+			for i := 1; i < len(t.on); i++ {
+				p = p.And(t.on[i])
+			}
+
+			err = s.buildExpression(p)
+			if err != nil {
+				return err
+			}
+		}
+
+		if len(t.using) > 0 {
+			s.sb.WriteString(" USING (")
+			for i, col := range t.using {
+				if i > 0 {
+					s.sb.WriteByte(',')
+				}
+				err = s.buildColumn(Column{name: col})
+				if err != nil {
+					return err
+				}
+			}
+			s.sb.WriteByte(')')
+		}
+
+		s.sb.WriteByte(')')
+	default:
+		return errs.NewErrUnsupportedTable(table)
+	}
+	return nil
 }
 
 func (s *Selector[T]) buildColumns() error {

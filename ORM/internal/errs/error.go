@@ -50,6 +50,10 @@ func NewErrUnsupportedSelectable(exp any) error {
 	return fmt.Errorf("orm: 不支持的目标列 %v", exp)
 }
 
+func NewErrUnsupportedTable(table any) error {
+	return fmt.Errorf("orm: 不支持的TableReference类型 %v", table)
+}
+
 // 后面可以考虑支持错误码
 // func NewErrUnsupportedExpressionType(exp any) error {
 // 	return fmt.Errorf("orm-50001: 不支持的表达式 %v", exp)

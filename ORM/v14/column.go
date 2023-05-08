@@ -3,6 +3,7 @@ package v1
 import "geektime/ORM/internal/errs"
 
 type Column struct {
+	table TableReference
 	name  string
 	alias string
 }
