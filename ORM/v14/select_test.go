@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"geektime/ORM/internal/errs"
 	"geektime/ORM/v14/internal/valuer"
 	"geektime/ORM/v14/model"
@@ -54,7 +55,81 @@ func TestJoin(t *testing.T) {
 				return NewSelector[Order](db).From(tbR)
 			}(),
 			wantQuery: &Query{
-				SQL: "SELECT * FROM (`item` AS `t4` JOIN (`order` AS `t1` JOIN `order_detail` AS `t2` ON `t1`.`id` = `t2`.`order_id`) ON `t2`.`item_id` = `t4`.`id`);",
+				SQL:  "SELECT * FROM (`order` AS `t1` JOIN `order_detail` AS `t2` ON `t1`.`id` = `t2`.`order_id`);",
+				Args: []any{},
+			},
+		},
+		{
+			name: "join-using",
+			builder: func() *Selector[Order] {
+				t1 := TableOf(&Order{})
+				t2 := TableOf(&OrderDetail{})
+				t3 := t1.Join(t2).Using("UsingCol1", "UsingCol2")
+				return NewSelector[Order](db).From(t3)
+			}(),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM (`order` JOIN `order_detail` USING (`using_col1`,`using_col2`));",
+				Args: []any{},
+			},
+		},
+		{
+			name: "left join ",
+			builder: func() *Selector[Order] {
+				t1 := TableOf(&Order{})
+				t2 := TableOf(&OrderDetail{})
+				t3 := t1.LeftJoin(t2).Using("UsingCol1", "UsingCol2")
+				return NewSelector[Order](db).From(t3)
+			}(),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM (`order` LEFT JOIN `order_detail` USING (`using_col1`,`using_col2`));",
+				Args: []any{},
+			},
+		},
+		{
+			name: "right join ",
+			builder: func() *Selector[Order] {
+				t1 := TableOf(&Order{})
+				t2 := TableOf(&OrderDetail{})
+				t3 := t1.RightJoin(t2).Using("UsingCol1", "UsingCol2")
+				return NewSelector[Order](db).From(t3)
+			}(),
+			wantQuery: &Query{
+				SQL:  "SELECT * FROM (`order` RIGHT JOIN `order_detail` USING (`using_col1`,`using_col2`));",
+				Args: []any{},
+			},
+		},
+		{
+			name: "join table",
+			builder: func() *Selector[Order] {
+				t1 := TableOf(&Order{}).As("t1")
+				t2 := TableOf(&OrderDetail{}).As("t2")
+				t3 := t1.Join(t2).On(t1.C("Id").EQ(t2.C("OrderId")))
+				t4 := TableOf(&Item{}).As("t4")
+				t5 := t3.Join(t4).On(t2.C("ItemId").EQ(t4.C("Id")))
+				return NewSelector[Order](db).From(t5)
+			}(),
+			wantQuery: &Query{
+				SQL: "SELECT * FROM " +
+					"((`order` AS `t1` JOIN `order_detail` AS `t2` ON `t1`.`id` = `t2`.`order_id`) " +
+					"JOIN `item` AS `t4` ON `t2`.`item_id` = `t4`.`id`);",
+				Args: []any{},
+			},
+		},
+		{
+			name: "table join",
+			builder: func() *Selector[Order] {
+				t1 := TableOf(&Order{}).As("t1")
+				t2 := TableOf(&OrderDetail{}).As("t2")
+				t3 := t1.Join(t2).On(t1.C("Id").EQ(t2.C("OrderId")))
+				t4 := TableOf(&Item{}).As("t4")
+				t5 := t3.Join(t4).On(t2.C("ItemId").EQ(t4.C("Id")))
+				return NewSelector[Order](db).From(t5)
+			}(),
+			wantQuery: &Query{
+				SQL: "SELECT * FROM " +
+					"((`order` AS `t1` JOIN `order_detail` AS `t2` ON `t1`.`id` = `t2`.`order_id`) " +
+					"JOIN `item` AS `t4` ON `t2`.`item_id` = `t4`.`id`);",
+				Args: []any{},
 			},
 		},
 	}
@@ -69,6 +144,20 @@ func TestJoin(t *testing.T) {
 			assert.Equal(t, tc.wantQuery, q)
 		})
 	}
+}
+
+func TestParseModel(t *testing.T) {
+
+	//构建db
+	sqlDB, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	db, _ := OpenDB(sqlDB)
+	m, _ := db.R.Get(new(Order))
+	fmt.Println(m.TableName)
+	m, _ = db.R.Get(new(OrderDetail))
+	fmt.Println(m.TableName)
 }
 
 func TestLimit(t *testing.T) {

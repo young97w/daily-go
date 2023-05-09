@@ -164,14 +164,12 @@ func (s *Selector[T]) buildTable(table TableReference) error {
 		//不需要空格
 		s.quote(s.model.TableName)
 	case Table:
-		m, err := s.R.Get(t)
+		m, err := s.R.Get(t.entity)
 		if err != nil {
 			return err
 		}
 
-		s.sb.WriteByte(' ')
 		s.quote(m.TableName)
-		s.sb.WriteByte(' ')
 		if t.alias != "" {
 			s.sb.WriteString(" AS ")
 			s.quote(t.alias)

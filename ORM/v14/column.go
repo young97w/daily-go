@@ -19,21 +19,47 @@ type value struct {
 }
 
 func (s *Selector[T]) buildColumn(c Column) error {
-	s.sb.WriteByte('`')
-	//s.sb.WriteString(exp.name)
-	//校验column
-	fd, ok := s.model.Fields[c.name]
-	if !ok {
-		return errs.NewErrUnknownField(c.name)
-	}
-	s.sb.WriteString(fd.ColName)
-	s.sb.WriteByte('`')
+	// 跟据c.table 的类型进行切换
+	switch table := c.table.(type) {
+	case nil:
+		s.sb.WriteByte('`')
+		//s.sb.WriteString(exp.name)
+		//校验column
+		fd, ok := s.model.Fields[c.name]
+		if !ok {
+			return errs.NewErrUnknownField(c.name)
+		}
+		s.sb.WriteString(fd.ColName)
+		s.sb.WriteByte('`')
 
-	// add alias
-	if c.alias != "" {
-		s.sb.WriteString(" AS `")
-		s.sb.WriteString(c.alias)
-		s.sb.WriteString("`")
+		// add alias
+		if c.alias != "" {
+			s.sb.WriteString(" AS `")
+			s.sb.WriteString(c.alias)
+			s.sb.WriteString("`")
+		}
+		return nil
+	case Table:
+		m, err := s.R.Get(table.entity)
+		if err != nil {
+			return err
+		}
+
+		f, ok := m.Fields[c.name]
+		if !ok {
+			return errs.NewErrUnknownField(c.name)
+		}
+		if table.alias != "" {
+			s.quote(table.alias)
+			s.sb.WriteByte('.')
+		}
+		s.quote(f.ColName)
+		if c.alias != "" {
+			s.sb.WriteString(" AS ")
+			s.quote(c.alias)
+		}
+	default:
+		return errs.NewErrUnsupportedTable(table)
 	}
 	return nil
 }
