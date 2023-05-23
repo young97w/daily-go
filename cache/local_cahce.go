@@ -15,9 +15,49 @@ var (
 var _ Cache = &BuildInMapCache{}
 
 type BuildInMapCache struct {
-	data  map[string]*item
-	mutex sync.RWMutex
-	close chan struct{}
+	data      map[string]*item
+	mutex     sync.RWMutex
+	close     chan struct{}
+	onEvicted func(key string, val any)
+}
+
+func NewBuildInMapCache(interval time.Duration, opts ...BuildInMapCacheOption) *BuildInMapCache {
+	res := &BuildInMapCache{
+		data:  make(map[string]*item, 100),
+		close: make(chan struct{}),
+		onEvicted: func(key string, val any) {
+
+		},
+	}
+
+	for _, opt := range opts {
+		opt(res)
+	}
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		for {
+			select {
+			case t := <-ticker.C:
+				res.mutex.Lock()
+				i := 0
+				for key, val := range res.data {
+					if i > 10000 {
+						break
+					}
+					if val.deadlineBefore(t) {
+						res.delete(key)
+					}
+					i++
+				}
+				res.mutex.Unlock()
+			case <-res.close:
+				return
+			}
+		}
+	}()
+
+	return res
 }
 
 func (b *BuildInMapCache) Set(ctx context.Context, key string, val any, expiration time.Duration) error {
@@ -72,11 +112,12 @@ func (b *BuildInMapCache) Delete(ctx context.Context, key string) error {
 }
 
 func (b *BuildInMapCache) delete(key string) {
-	_, ok := b.data[key]
+	itm, ok := b.data[key]
 	if !ok {
 		return
 	}
 	delete(b.data, key)
+	b.onEvicted(key, itm.val)
 }
 
 func (b *BuildInMapCache) LoadAndDelete(ctx context.Context, key string) (any, error) {
@@ -100,38 +141,8 @@ func (i *item) deadlineBefore(t time.Time) bool {
 	return !i.deadline.IsZero() && i.deadline.Before(t)
 }
 
-func NewBuildInMapCache(interval time.Duration, opts ...BuildInMapCacheOption) *BuildInMapCache {
-	res := &BuildInMapCache{
-		data:  make(map[string]*item, 100),
-		close: make(chan struct{}),
+func WithEvictedCallBack(fn func(key string, val any)) BuildInMapCacheOption {
+	return func(cache *BuildInMapCache) {
+		cache.onEvicted = fn
 	}
-
-	for _, opt := range opts {
-		opt(res)
-	}
-
-	go func() {
-		ticker := time.NewTicker(interval)
-		for {
-			select {
-			case t := <-ticker.C:
-				res.mutex.Lock()
-				i := 0
-				for key, val := range res.data {
-					if i > 10000 {
-					}
-					break
-					if val.deadlineBefore(t) {
-						res.delete(key)
-					}
-					i++
-				}
-				res.mutex.Unlock()
-			case <-res.close:
-				return
-			}
-		}
-	}()
-
-	return res
 }

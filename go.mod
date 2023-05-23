@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/golang/mock v1.4.4
 	github.com/gotomicro/ekit v0.0.6
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/mattn/go-sqlite3 v1.14.16
