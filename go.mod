@@ -6,6 +6,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/golang/mock v1.4.4
+	github.com/google/uuid v1.3.0
 	github.com/gotomicro/ekit v0.0.6
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/mattn/go-sqlite3 v1.14.16
@@ -18,6 +19,7 @@ require (
 	go.opentelemetry.io/otel/exporters/zipkin v1.14.0
 	go.opentelemetry.io/otel/sdk v1.14.0
 	go.opentelemetry.io/otel/trace v1.14.0
+	golang.org/x/sync v0.1.0
 )
 
 require (
@@ -28,7 +30,6 @@ require (
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/openzipkin/zipkin-go v0.4.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
