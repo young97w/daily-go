@@ -58,9 +58,6 @@ type Lock struct {
 func (l *Lock) Unlock(ctx context.Context) error {
 	// 需要通过lua脚本，有则释放锁，无则返回。这个操作为一个事务
 	res, err := l.client.Eval(ctx, luaUnlock, []string{l.key}, l.value).Int64()
-	if err == redis.Nil {
-		return ErrLockNotHold
-	}
 	if err != nil {
 		return err
 	}
