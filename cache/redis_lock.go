@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
@@ -18,6 +19,8 @@ var (
 	luaUnlock string
 	//go:embed lua/refresh.lua
 	luaRefresh string
+	//go:embed lua/lock.lua
+	luaLock string
 )
 
 type Client struct {
@@ -28,6 +31,48 @@ type Client struct {
 func NewClient(client redis.Cmdable) *Client {
 	return &Client{
 		client: client,
+	}
+}
+
+// Lock 会有重试机制，如果锁没被持有，则当前持有。如果锁已持有则续期。被被人持有则返回error
+func (c *Client) Lock(ctx context.Context, key string, expiration, timeout time.Duration, retry RetryStrategy) (*Lock, error) {
+	var timer *time.Timer
+	val := uuid.New().String()
+	for {
+		lctx, cancel := context.WithTimeout(ctx, timeout)
+		res, err := c.client.Eval(lctx, luaLock, []string{key}, val, expiration.Seconds()).Result()
+		cancel()
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
+
+		if res == "OK" {
+			return &Lock{
+				client:     c.client,
+				key:        key,
+				value:      val,
+				expiration: expiration,
+				unlockChan: make(chan struct{}, 1),
+			}, nil
+		}
+
+		interval, ok := retry.Next()
+		if !ok {
+			return nil, fmt.Errorf("redis-lock: 超出重试限制, %w", ErrFailedToPreemptLock)
+		}
+
+		if timer == nil {
+			timer = time.NewTimer(interval)
+		} else {
+			timer.Reset(interval)
+		}
+
+		//等待一个interval
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 }
 
@@ -118,6 +163,9 @@ func (l *Lock) AutoRefresh(interval time.Duration, timeout time.Duration) error 
 			if err != nil {
 				return err
 			}
+		case <-l.unlockChan:
+			//调用unlock方法
+			return nil
 		}
 	}
 }
