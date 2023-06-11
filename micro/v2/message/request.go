@@ -60,7 +60,7 @@ func DecodeReq(data []byte) *Request {
 	req.RequestId = binary.BigEndian.Uint32(data[8:12])
 	req.Version = data[12]
 	req.Compressor = data[13]
-	req.Serializer = data[15]
+	req.Serializer = data[14]
 
 	header := data[15:]
 	idx := bytes.IndexByte(header, '\n')

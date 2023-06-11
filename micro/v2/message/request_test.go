@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestDecodeReq(t *testing.T) {
+func TestEnDecodeReq(t *testing.T) {
 	testCases := []struct {
 		name string
 		req  *Request
@@ -62,7 +62,8 @@ func TestDecodeReq(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ecd := EncodeReq(tc.req)
 			req := DecodeReq(ecd)
-			assert.Equal(t, tc.req.Data, req.Data)
+			assert.Equal(t, tc.req, req)
+			fmt.Println(req.Serializer)
 			fmt.Println(string(req.Data))
 		})
 	}
