@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"geektime/micro/v2/message"
 	"github.com/silenceper/pool"
 	"net"
 	"reflect"
@@ -44,10 +45,10 @@ func setFuncField(service Service, p Proxy) error {
 				if err != nil {
 					return []reflect.Value{retVal, reflect.ValueOf(err)}
 				}
-				req := &Request{
+				req := &message.Request{
 					ServiceName: service.Name(),
 					MethodName:  fieldTyp.Name,
-					Arg:         reqData,
+					Data:        reqData,
 				}
 				//call remote function
 				resp, err := p.Invoke(ctx, req)
@@ -72,17 +73,14 @@ type Client struct {
 	pool pool.Pool
 }
 
-func (c *Client) Invoke(ctx context.Context, req *Request) (*Response, error) {
-	data, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
+func (c *Client) Invoke(ctx context.Context, req *message.Request) (*message.Response, error) {
+	data := message.EncodeReq(req)
 	// send 之后拿到响应
 	resp, err := c.Send(data)
 	if err != nil {
 		return nil, err
 	}
-	return &Response{Data: resp}, nil
+	return message.DecodeResp(resp), nil
 }
 
 func NewClient(addr string) (*Client, error) {
@@ -114,9 +112,7 @@ func (c *Client) Send(data []byte) ([]byte, error) {
 	defer func() {
 		c.pool.Put(val)
 	}()
-
-	req := EncodeMsg(data)
-	_, err = conn.Write(req)
+	_, err = conn.Write(data)
 	if err != nil {
 		return nil, err
 	}

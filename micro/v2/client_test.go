@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"geektime/micro/v2/message"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -45,7 +45,9 @@ func Test_setFuncField(t *testing.T) {
 			name: "user service",
 			mock: func(ctrl *gomock.Controller) Proxy {
 				p := NewMockProxy(ctrl)
-				p.EXPECT().Invoke(gomock.Any(), gomock.Any()).Return(&Response{Data: retRespData()}, nil)
+				p.EXPECT().Invoke(gomock.Any(), gomock.Any()).Return(&message.Response{
+					Data: retRespData(),
+				}, nil)
 				return p
 			},
 			service: &UserService{},
@@ -66,16 +68,4 @@ func Test_setFuncField(t *testing.T) {
 			t.Log(resp)
 		})
 	}
-}
-
-func TestInvoke(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	p := NewMockProxy(ctrl)
-	p.EXPECT().Invoke(gomock.Any(), gomock.Any()).Return(&Response{Data: retRespData()}, nil)
-	res, err := p.Invoke(context.Background(), &Request{})
-	require.NoError(t, err)
-	msg := &GetByIdResp{}
-	json.Unmarshal(res.Data, msg)
-	assert.Equal(t, &GetByIdResp{Msg: "hello"}, msg)
-
 }

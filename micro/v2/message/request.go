@@ -24,7 +24,7 @@ type Request struct {
 
 func EncodeReq(req *Request) []byte {
 	req.CalcLength()
-	data := make([]byte, req.HeadLength+req.BodyLength+1) //分割用一个/n
+	data := make([]byte, req.HeadLength+req.BodyLength) //分割用一个/n
 	//开始写入头部
 	binary.BigEndian.PutUint32(data[:4], req.HeadLength)
 	binary.BigEndian.PutUint32(data[4:8], req.BodyLength)
@@ -86,12 +86,12 @@ func DecodeReq(data []byte) *Request {
 		}
 		req.MetaData = m
 	}
-	req.Data = header
+	req.Data = header[:]
 	return req
 }
 
 func (req *Request) CalcLength() {
-	l := 14 + len(req.ServiceName) + 1 + len(req.MethodName) + 1
+	l := 15 + len(req.ServiceName) + 1 + len(req.MethodName) + 1
 	for k, v := range req.MetaData {
 		l = l + len(k) + 1 + len(v) + 1
 	}

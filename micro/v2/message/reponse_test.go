@@ -17,8 +17,17 @@ func TestEnDecodeResp(t *testing.T) {
 				Version:    6,
 				Compressor: 6,
 				Serializer: 61,
-
-				Data: []byte("hello"),
+				Error:      []byte("error1"),
+				Data:       []byte("hello"),
+			},
+		},
+		{
+			name: "no err",
+			resp: &Response{
+				Version:    6,
+				Compressor: 6,
+				Serializer: 61,
+				Data:       []byte("hello"),
 			},
 		},
 		{
@@ -27,18 +36,7 @@ func TestEnDecodeResp(t *testing.T) {
 				Version:    6,
 				Compressor: 6,
 				Serializer: 61,
-
-				Data: []byte(""),
-			},
-		},
-		{
-			name: "no map",
-			resp: &Response{
-				Version:    6,
-				Compressor: 6,
-				Serializer: 61,
-				//MetaData: make(map[string]string,2),
-				Data: []byte("hello"),
+				Error:      []byte("error1"),
 			},
 		},
 	}

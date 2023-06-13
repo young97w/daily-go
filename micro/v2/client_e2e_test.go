@@ -22,6 +22,6 @@ func TestE2E(t *testing.T) {
 	require.NoError(t, err)
 	res, err := userClient.GetById(context.Background(), &GetByIdReq{Id: 123})
 	require.NoError(t, err)
-	assert.Equal(t, "空尼基哇", res.Msg)
+	assert.Equal(t, "123", res.Msg)
 
 }

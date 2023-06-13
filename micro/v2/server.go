@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"geektime/micro/v2/message"
 	"net"
 	"reflect"
 )
@@ -52,43 +53,50 @@ func (s *Server) handleConn(conn net.Conn) error {
 		if err != nil {
 			return err
 		}
-		req := &Request{}
-		err = json.Unmarshal(reqBS, req)
+		req := message.DecodeReq(reqBS)
 		if err != nil {
 			return err
 		}
 		resp, err := s.Invoke(context.Background(), req)
 		if err != nil {
-			return err
+			// handle error
+			resp.Error = []byte(err.Error())
 		}
-		res := EncodeMsg(resp.Data)
-		_, err = conn.Write(res)
+		resData := message.EncodeResp(resp)
+		_, err = conn.Write(resData)
 		if err != nil {
 			return err
 		}
 	}
 }
 
-func (s *Server) Invoke(ctx context.Context, req *Request) (*Response, error) {
+func (s *Server) Invoke(ctx context.Context, req *message.Request) (*message.Response, error) {
 	//根据service name 拿到对应的结构体
 	refStub, ok := s.services[req.ServiceName]
+	resp := &message.Response{
+		RequestID:  req.RequestId,
+		Version:    req.Version,
+		Compressor: req.Compressor,
+		Serializer: req.Serializer,
+	}
 	if !ok {
 		return nil, errors.New("调用的服务不存在")
 	}
-	resp, err := refStub.invoke(ctx, req.MethodName, req.Arg)
+	respData, err := refStub.invoke(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return &Response{Data: resp}, nil
+	resp.Data = respData
+	return resp, nil
 }
 
-func (s *ReflectionStub) invoke(ctx context.Context, name string, arg []byte) ([]byte, error) {
-	method := s.value.MethodByName(name)
+func (s *ReflectionStub) invoke(ctx context.Context, req *message.Request) ([]byte, error) {
+	method := s.value.MethodByName(req.MethodName)
 	in := make([]reflect.Value, 2)
 	//第一个参数
 	in[0] = reflect.ValueOf(context.Background())
 	inReq := reflect.New(method.Type().In(1).Elem())
-	err := json.Unmarshal(arg, inReq.Interface())
+	err := json.Unmarshal(req.Data, inReq.Interface())
 	if err != nil {
 		return nil, err
 	}

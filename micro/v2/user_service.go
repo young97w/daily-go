@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"log"
+	"strconv"
 )
 
 type UserService struct {
@@ -26,7 +27,7 @@ type UserServiceServer struct {
 
 func (u *UserServiceServer) GetById(ctx context.Context, req *GetByIdReq) (*GetByIdResp, error) {
 	log.Println(req)
-	return &GetByIdResp{Msg: "空尼基哇"}, nil
+	return &GetByIdResp{Msg: strconv.Itoa(req.Id)}, nil
 }
 
 func (u *UserServiceServer) Name() string {
