@@ -2,25 +2,22 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"geektime/micro/v2/message"
+	"geektime/micro/v2/serialize"
+	"geektime/micro/v2/serialize/json"
 	"github.com/silenceper/pool"
 	"net"
 	"reflect"
 	"time"
 )
 
-func InitClientProxy(addr string, service Service) error {
-	client, err := NewClient(addr)
-	if err != nil {
-		return err
-	}
+func (c *Client) InitService(service Service) error {
 	// init proxy
-	return setFuncField(service, client)
+	return setFuncField(service, c, c.serializer)
 }
 
-func setFuncField(service Service, p Proxy) error {
+func setFuncField(service Service, p Proxy, s serialize.Serializer) error {
 	if service == nil {
 		return errors.New("rpc: 不支持nil")
 	}
@@ -41,21 +38,27 @@ func setFuncField(service Service, p Proxy) error {
 			fn := func(args []reflect.Value) (results []reflect.Value) {
 				retVal := reflect.New(fieldTyp.Type.Out(0).Elem())
 				ctx := args[0].Interface().(context.Context)
-				reqData, err := json.Marshal(args[1].Interface())
+				reqData, err := s.Encode(args[1].Interface())
 				if err != nil {
 					return []reflect.Value{retVal, reflect.ValueOf(err)}
+				}
+				var meta map[string]string
+				if isOneway(ctx) {
+					meta = map[string]string{"one-way": "true"}
 				}
 				req := &message.Request{
 					ServiceName: service.Name(),
 					MethodName:  fieldTyp.Name,
 					Data:        reqData,
+					Serializer:  s.Code(),
+					MetaData:    meta,
 				}
 				//call remote function
 				resp, err := p.Invoke(ctx, req)
 				if err != nil {
 					return []reflect.Value{retVal, reflect.ValueOf(err)}
 				}
-				err = json.Unmarshal(resp.Data, retVal.Interface())
+				err = s.Decode(resp.Data, retVal.Interface())
 				if err != nil {
 					return []reflect.Value{retVal, reflect.ValueOf(err)}
 				}
@@ -70,20 +73,29 @@ func setFuncField(service Service, p Proxy) error {
 }
 
 type Client struct {
-	pool pool.Pool
+	pool       pool.Pool
+	serializer serialize.Serializer
 }
 
 func (c *Client) Invoke(ctx context.Context, req *message.Request) (*message.Response, error) {
 	data := message.EncodeReq(req)
 	// send 之后拿到响应
-	resp, err := c.Send(data)
+	resp, err := c.Send(ctx, data)
 	if err != nil {
 		return nil, err
 	}
 	return message.DecodeResp(resp), nil
 }
 
-func NewClient(addr string) (*Client, error) {
+type ClientOption func(client *Client)
+
+func ClientWithSerializerOpt(sl serialize.Serializer) ClientOption {
+	return func(c *Client) {
+		c.serializer = sl
+	}
+}
+
+func NewClient(addr string, opts ...ClientOption) (*Client, error) {
 	p, err := pool.NewChannelPool(&pool.Config{
 		InitialCap:  1,
 		MaxCap:      20,
@@ -100,10 +112,17 @@ func NewClient(addr string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{pool: p}, nil
+	c := &Client{
+		pool:       p,
+		serializer: &json.Serializer{},
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c, nil
 }
 
-func (c *Client) Send(data []byte) ([]byte, error) {
+func (c *Client) Send(ctx context.Context, data []byte) ([]byte, error) {
 	val, err := c.pool.Get()
 	if err != nil {
 		return nil, err
@@ -115,6 +134,9 @@ func (c *Client) Send(data []byte) ([]byte, error) {
 	_, err = conn.Write(data)
 	if err != nil {
 		return nil, err
+	}
+	if isOneway(ctx) {
+		return nil, errors.New("micro: 这是一个 oneway 调用，你不应该处理任何结果")
 	}
 	return ReadMsg(conn)
 }

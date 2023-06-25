@@ -2,9 +2,10 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
+	json2 "encoding/json"
 	"errors"
 	"geektime/micro/v2/message"
+	"geektime/micro/v2/serialize/json"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -12,7 +13,7 @@ import (
 
 func retRespData() []byte {
 	resp := &GetByIdResp{Msg: "hello"}
-	res, _ := json.Marshal(resp)
+	res, _ := json2.Marshal(resp)
 	return res
 }
 
@@ -58,7 +59,7 @@ func Test_setFuncField(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-			err := setFuncField(tc.service, tc.mock(ctrl))
+			err := setFuncField(tc.service, tc.mock(ctrl), json.Serializer{})
 			assert.Equal(t, tc.wantErr, err)
 			if err != nil {
 				return

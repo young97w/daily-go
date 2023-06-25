@@ -2,30 +2,43 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"geektime/micro/v2/message"
+	"geektime/micro/v2/serialize"
+	"geektime/micro/v2/serialize/json"
+	"geektime/micro/v2/serialize/proto"
 	"net"
 	"reflect"
 )
 
 type Server struct {
-	services map[string]ReflectionStub
+	services    map[string]ReflectionStub
+	serializers map[uint8]serialize.Serializer
 }
 
 type ReflectionStub struct {
-	s     Service
-	value reflect.Value
+	s           Service
+	value       reflect.Value
+	serializers map[uint8]serialize.Serializer
 }
 
 func NewServer() *Server {
-	return &Server{services: make(map[string]ReflectionStub, 16)}
+	s := &Server{services: make(map[string]ReflectionStub, 16), serializers: make(map[uint8]serialize.Serializer, 2)}
+	s.RegisterSerializers(&json.Serializer{}, &proto.Serializer{})
+	return s
+}
+
+func (s *Server) RegisterSerializers(sl ...serialize.Serializer) {
+	for _, serializer := range sl {
+		s.serializers[serializer.Code()] = serializer
+	}
 }
 
 func (s *Server) RegisterService(service Service) {
 	s.services[service.Name()] = ReflectionStub{
-		s:     service,
-		value: reflect.ValueOf(service),
+		s:           service,
+		value:       reflect.ValueOf(service),
+		serializers: s.serializers,
 	}
 }
 
@@ -72,7 +85,7 @@ func (s *Server) handleConn(conn net.Conn) error {
 
 func (s *Server) Invoke(ctx context.Context, req *message.Request) (*message.Response, error) {
 	//根据service name 拿到对应的结构体
-	refStub, ok := s.services[req.ServiceName]
+	service, ok := s.services[req.ServiceName]
 	resp := &message.Response{
 		RequestID:  req.RequestId,
 		Version:    req.Version,
@@ -82,7 +95,13 @@ func (s *Server) Invoke(ctx context.Context, req *message.Request) (*message.Res
 	if !ok {
 		return nil, errors.New("调用的服务不存在")
 	}
-	respData, err := refStub.invoke(ctx, req)
+	if isOneway(ctx) {
+		go func() {
+			_, _ = service.invoke(ctx, req)
+		}()
+		return nil, errors.New("micro: 微服务服务端 oneway 请求")
+	}
+	respData, err := service.invoke(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +115,11 @@ func (s *ReflectionStub) invoke(ctx context.Context, req *message.Request) ([]by
 	//第一个参数
 	in[0] = reflect.ValueOf(context.Background())
 	inReq := reflect.New(method.Type().In(1).Elem())
-	err := json.Unmarshal(req.Data, inReq.Interface())
+	sl, ok := s.serializers[req.Serializer]
+	if !ok {
+		return nil, errors.New("micro: 不支持的序列化协议")
+	}
+	err := sl.Decode(req.Data, inReq.Interface())
 	if err != nil {
 		return nil, err
 	}
@@ -105,5 +128,5 @@ func (s *ReflectionStub) invoke(ctx context.Context, req *message.Request) ([]by
 	if res[1].Interface() != nil {
 		return nil, res[1].Interface().(error)
 	}
-	return json.Marshal(res[0].Interface())
+	return sl.Encode(res[0].Interface())
 }
