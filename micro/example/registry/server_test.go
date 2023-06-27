@@ -16,13 +16,13 @@ func TestServer(t *testing.T) {
 		Endpoints: []string{"localhost:2379"},
 	})
 	require.NoError(t, err)
-	r, err := etcd.NewRegistry(etcdClient)
+	registry, err := etcd.NewRegistry(etcdClient)
 	require.NoError(t, err)
-	s, err := micro.NewServer("user-service", micro.ServerWithRegister(r))
+	server, err := micro.NewServer("user-service", micro.ServerWithRegister(registry))
 	require.NoError(t, err)
 	us := &UserServiceServer{}
-	__gen.RegisterUserServiceServer(s, us)
-	err = s.Start(":8081")
+	__gen.RegisterUserServiceServer(server, us)
+	err = server.Start(":8081")
 	t.Log(err)
 }
 

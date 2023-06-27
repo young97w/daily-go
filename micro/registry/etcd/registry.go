@@ -60,11 +60,43 @@ func (r *Registry) ListService(ctx context.Context, serviceName string) ([]regis
 }
 
 func (r *Registry) Subscribe(serviceName string) (<-chan registry.Event, error) {
-	//TODO implement me
-	panic("implement me")
+	ctx, cancel := context.WithCancel(context.Background())
+	r.mutex.Lock()
+	r.cancels = append(r.cancels, cancel)
+	r.mutex.Unlock()
+	ctx = clientv3.WithRequireLeader(ctx)
+	watchResp := r.c.Watch(ctx, r.serviceKey(serviceName), clientv3.WithPrefix())
+	res := make(chan registry.Event)
+	go func() {
+		for {
+			select {
+			case resp := <-watchResp:
+				if resp.Err() != nil {
+					continue
+				}
+				if resp.Canceled {
+					return
+				}
+				for range resp.Events {
+					res <- registry.Event{}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return res, nil
 }
 
 func (r *Registry) Close() error {
+	//execute cancel functions
+	r.mutex.Lock()
+	cancels := r.cancels
+	r.cancels = nil
+	r.mutex.Unlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
 	err := r.sess.Close()
 	return err
 }
