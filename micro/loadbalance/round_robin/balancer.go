@@ -1,6 +1,7 @@
 package round_robin
 
 import (
+	"fmt"
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/base"
 	"sync/atomic"
@@ -18,6 +19,7 @@ func (b *Balancer) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	}
 
 	idx := atomic.AddInt32(&b.index, 1)
+	fmt.Println("Picker Index is:", idx, " length is:", b.length)
 	c := b.connections[idx%b.length]
 	return balancer.PickResult{
 		SubConn: c,

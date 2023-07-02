@@ -6,6 +6,7 @@ import (
 	"geektime/micro/registry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
+	"google.golang.org/grpc/balancer/base"
 	"time"
 )
 
@@ -13,7 +14,7 @@ type Client struct {
 	insecure bool
 	r        registry.Registry
 	timeout  time.Duration
-	balancer balancer.Balancer
+	balancer balancer.Builder
 }
 
 type ClientOption func(client *Client)
@@ -39,6 +40,14 @@ func ClientWithRegistry(r registry.Registry, timeout time.Duration) ClientOption
 	}
 }
 
+func ClientWithPickerBuilder(name string, b base.PickerBuilder) ClientOption {
+	return func(c *Client) {
+		builder := base.NewBalancerBuilder(name, b, base.Config{HealthCheck: true})
+		balancer.Register(builder)
+		c.balancer = builder
+	}
+}
+
 func (c *Client) Dial(ctx context.Context, service string, dialOptions ...grpc.DialOption) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 
@@ -52,6 +61,10 @@ func (c *Client) Dial(ctx context.Context, service string, dialOptions ...grpc.D
 
 	if c.insecure {
 		opts = append(opts, grpc.WithInsecure())
+	}
+
+	if c.balancer != nil {
+		opts = append(opts, grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"LoadBalancingPolicy":"%s"}`, c.balancer.Name())))
 	}
 
 	if len(dialOptions) > 0 {

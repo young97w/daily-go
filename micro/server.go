@@ -20,6 +20,12 @@ type Server struct {
 	group    string
 }
 
+func ServerWithWeight(weight uint32) ServerOption {
+	return func(s *Server) {
+		s.weight = weight
+	}
+}
+
 func ServerWithRegister(r registry.Registry) ServerOption {
 	return func(s *Server) {
 		s.registry = r
@@ -51,6 +57,7 @@ func (s *Server) Start(addr string) error {
 		er := s.registry.Register(ctx, registry.ServiceInstance{
 			Name:    s.name,
 			Address: addr,
+			Weight:  s.weight,
 			Group:   s.group,
 		})
 		if er != nil {
