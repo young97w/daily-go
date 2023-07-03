@@ -26,6 +26,12 @@ func ServerWithWeight(weight uint32) ServerOption {
 	}
 }
 
+func ServerWithGroup(group string) ServerOption {
+	return func(s *Server) {
+		s.group = group
+	}
+}
+
 func ServerWithRegister(r registry.Registry) ServerOption {
 	return func(s *Server) {
 		s.registry = r

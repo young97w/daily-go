@@ -2,7 +2,6 @@ package micro
 
 import (
 	"context"
-	"fmt"
 	"geektime/micro/registry"
 	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/resolver"
@@ -63,7 +62,7 @@ func (g *grpcResolver) watch() {
 
 func (g *grpcResolver) resolve() {
 	//获取所有实例再更新
-	fmt.Println("resolve ----")
+	//fmt.Println("resolve ----")
 	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
 	defer cancel()
 	instances, err := g.r.ListService(ctx, g.target.Endpoint)

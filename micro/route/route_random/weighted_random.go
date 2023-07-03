@@ -1,7 +1,6 @@
-package random
+package route_random
 
 import (
-	"fmt"
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/base"
 	"math/rand"
@@ -49,7 +48,6 @@ type WeightedBalanceBuilder struct {
 }
 
 func (b *WeightedBalanceBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
-	fmt.Println("----random weighted")
 	cs := make([]*weightConn, 0, len(info.ReadySCs))
 	var totalWeight uint32
 	for conn, connInfo := range info.ReadySCs {

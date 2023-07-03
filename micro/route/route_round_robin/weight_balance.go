@@ -1,7 +1,6 @@
-package round_robin
+package route_round_robin
 
 import (
-	"fmt"
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/base"
 	"math"
@@ -65,7 +64,6 @@ type WeightBalanceBuilder struct {
 }
 
 func (w *WeightBalanceBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
-	fmt.Println("-----Weighted balance")
 	cs := make([]*weightConn, 0, len(info.ReadySCs))
 	for sub, subInfo := range info.ReadySCs {
 		weight := subInfo.Address.Attributes.Value("weight").(uint32)

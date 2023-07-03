@@ -33,6 +33,7 @@ type Builder struct {
 }
 
 func (b *Builder) Build(info base.PickerBuildInfo) balancer.Picker {
+	fmt.Println("-----Start Build")
 	connections := make([]balancer.SubConn, 0, len(info.ReadySCs))
 	for conn := range info.ReadySCs {
 		connections = append(connections, conn)
