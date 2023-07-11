@@ -3,7 +3,6 @@ package ratelimit
 import (
 	"context"
 	"errors"
-	"fmt"
 	__gen "geektime/micro/proto/.gen"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -111,17 +110,17 @@ func TestTokenBucketLimiter_Tokens(t *testing.T) {
 	assert.Nil(t, resp)
 }
 
-func TestGetToken(t *testing.T) {
-	limiter := NewTokenBucketLimiter(1, time.Second*2)
-	fmt.Println("initialisation at ", time.Now().Format("2006-01-02 04:05"))
-	go func() {
-		for {
-			select {
-			case <-limiter.tokens:
-				fmt.Println("get token at ", time.Now().Format("2006-01-02 04:05"))
-			}
-		}
-	}()
-
-	time.Sleep(time.Second * 10)
-}
+//func TestGetToken(t *testing.T) {
+//	limiter := NewTokenBucketLimiter(1, time.Second*2)
+//	fmt.Println("initialisation at ", time.Now().Format("2006-01-02 04:05"))
+//	go func() {
+//		for {
+//			select {
+//			case <-limiter.tokens:
+//				fmt.Println("get token at ", time.Now().Format("2006-01-02 04:05"))
+//			}
+//		}
+//	}()
+//
+//	time.Sleep(time.Second * 10)
+//}
