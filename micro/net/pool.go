@@ -41,7 +41,7 @@ func NewPool(initCnt, maxCnt, maxIdles int, timeout time.Duration, factory func(
 }
 
 func (p *Pool) Get(ctx context.Context) (*conn, error) {
-	// 1.空闲队列有
+	// 1.空闲队列有，拿走
 	// 2.空闲队列无，创建
 	// 3.空闲队列无，等待
 	select {
