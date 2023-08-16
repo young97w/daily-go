@@ -3,9 +3,12 @@ package ratelimit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestNewSlideWindowLimiter(t *testing.T) {
@@ -43,4 +46,34 @@ func TestNewSlideWindowLimiter(t *testing.T) {
 			assert.Equal(t, tc.wantResp, resp)
 		})
 	}
+}
+
+func TestSlideWindow(t *testing.T) {
+	interceptor := NewSlideWindowLimiter(time.Millisecond*100, 100).BuildServerInterceptor()
+	c := int64(0)
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return 1, nil
+	}
+	for i := 0; i < 150; i++ {
+		go func() {
+			_, err := interceptor(nil, nil, nil, handler)
+			if err != nil {
+				atomic.AddInt64(&c, 1)
+			}
+		}()
+	}
+	time.Sleep(time.Second)
+	fmt.Println(c)
+	c = 0
+
+	for i := 0; i < 150; i++ {
+		go func() {
+			_, err := interceptor(nil, nil, nil, handler)
+			if err != nil {
+				atomic.AddInt64(&c, 1)
+			}
+		}()
+	}
+	time.Sleep(time.Second)
+	fmt.Println(c)
 }

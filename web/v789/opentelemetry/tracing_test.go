@@ -33,7 +33,7 @@ func TestTracing(t *testing.T) {
 func traceFunc(ctx *web.Context) {
 	c, span := tracer.Start(ctx.Req.Context(), "first_layer")
 	defer span.End()
-
+	time.Sleep(100 * time.Millisecond)
 	//子节点二
 	c, second := tracer.Start(c, "second_layer")
 	time.Sleep(time.Second)
@@ -43,7 +43,7 @@ func traceFunc(ctx *web.Context) {
 	third.End()
 
 	//字节点3-2
-	_, third2 := tracer.Start(c, "third_1")
+	_, third2 := tracer.Start(c, "third_2")
 	time.Sleep(100 * time.Millisecond)
 	third2.End()
 
